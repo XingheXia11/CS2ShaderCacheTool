@@ -1,0 +1,7 @@
+# 其余文本文件按 git 默认方式处理
+* text=auto
+
+# PS1/BAT 不做任何换行符归一化, 仓库直接保存 CRLF 原始字节,
+# 保证 GitHub 网页下载 ZIP / 任意平台 clone 拿到的都是 CRLF (bat 对换行符敏感)。
+*.ps1 -text
+*.bat -text
