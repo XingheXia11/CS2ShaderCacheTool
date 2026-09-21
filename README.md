@@ -9,7 +9,7 @@
 1. 打开本仓库页面，点绿色 **Code** 按钮 → **Download ZIP**，解压到任意文件夹（也可以在 Releases 页下载打包版）；
 2. 双击 `Rebuild-CS2-Shader-Cache.bat`，按提示操作即可。
 
-> 仓库结构：根目录的 `Rebuild-CS2-Shader-Cache.bat` 是唯一入口，脚本和本说明都在 `src\` 里。只需双击根目录那个 bat，不用进 `src\`。
+> 仓库结构：根目录的 `Rebuild-CS2-Shader-Cache.bat` 是唯一入口，双击它就行；脚本放在 `src\` 里，不用进去。
 
 > 首次运行如果弹出 SmartScreen 或杀毒软件提示，属于脚本类工具的常见误报，点击"仍要运行 / 允许"即可。工具无需安装，也不依赖 git 或 PowerShell 7。
 
