@@ -3,7 +3,7 @@
 .SYNOPSIS
     CS2 快速重建着色器缓存工具
 .DESCRIPTION
-    流程依据小黑盒教程《CS更新后掉帧严重？一张图片解决你的问题！》(作者: 忧郁美男子):
+    处理流程:
       1. 删除 CS2 game\core 目录下 shaders* 开头的文件
       2. Steam 校验 CS2 文件完整性 (被删除的文件会自动重新下载)
       3. 清理 Windows DirectX 着色器缓存 (等同"磁盘清理"中的 DirectX 着色器缓存项)
