@@ -1,7 +1,5 @@
 # CS2 快速重建着色器缓存工具
 
-流程依据小黑盒帖子：[《CS更新后掉帧严重？一张图片解决你的问题！》](https://www.xiaoheihe.cn/app/bbs/link/3be9704d089b)（作者：忧郁美男子，2025-05-17）
-
 适用于 **Windows + Steam 版 CS2**，用于解决 CS2 更新后掉帧、卡顿的问题。
 
 ## 下载使用
@@ -37,9 +35,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\src\Rebuild-CS2ShaderCache
 powershell -NoProfile -ExecutionPolicy Bypass -File .\src\Rebuild-CS2ShaderCache.ps1 -AppId 730 # 指定其他 Steam 游戏 AppId
 ```
 
-## 工具自动化的内容（对应教程流程）
+## 工具自动化的内容
 
-| 教程步骤 | 工具做的事 |
+| 手动操作 | 工具做的事 |
 |---|---|
 | 库中右键 CS2 → 浏览本地文件 → game → core | 自动从注册表和 `libraryfolders.vdf` 定位安装目录，进入 `game\core` |
 | 删除 shaders 开头的文件 | 自动列出并移出所有 `shaders*` 文件（先移到备份目录，不是直接永久删除） |
@@ -50,9 +48,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\src\Rebuild-CS2ShaderCache
 
 ## 注意事项
 
-- **一定要跑图**：`shader_build 730` 只是预编译，教程强调完成后必须进游戏跑图，否则实战仍可能掉帧。
-- **效果因人而异**：原帖作者也说"每个人的配置都不同，有些人可能用了会没有效果，这是正常的"。
-- **如果更卡了**：教程原话——帧数非但没有提升反而下降，重下游戏即可。
+- **一定要跑图**：`shader_build 730` 只是预编译，完成后必须进游戏跑图，否则实战仍可能掉帧。
+- **效果因人而异**：每个人的配置都不同，有些人用了会没有效果，这是正常的。
+- **如果更卡了**：帧数非但没有提升反而下降，重下游戏即可。
 - 清理 DirectX / 显卡着色器缓存会影响**所有游戏**：其他游戏首次启动时也会重新编译着色器，属正常现象。
 - 备份位置：`%LOCALAPPDATA%\CS2ShaderCacheTool\backup_时间戳`。校验完整性完成后这些备份就没用了，可手动删除。
 - Steam 控制台那条命令是 Steam 客户端内置命令，必须在 Steam 窗口里执行；工具会自动把它复制到剪贴板，粘贴回车即可。
