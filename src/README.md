@@ -7,26 +7,34 @@
 ## 下载使用
 
 1. 打开本仓库页面，点绿色 **Code** 按钮 → **Download ZIP**，解压到任意文件夹（也可以在 Releases 页下载打包版）；
-2. 双击 `一键重建CS2着色器缓存.bat`，按提示操作即可。
+2. 双击 `Rebuild-CS2-Shader-Cache.bat`，按提示操作即可。
+
+> 仓库结构：根目录的 `Rebuild-CS2-Shader-Cache.bat` 是唯一入口，脚本和本说明都在 `src\` 里。只需双击根目录那个 bat，不用进 `src\`。
 
 > 首次运行如果弹出 SmartScreen 或杀毒软件提示，属于脚本类工具的常见误报，点击"仍要运行 / 允许"即可。工具无需安装，也不依赖 git 或 PowerShell 7。
 
 ## 使用方法
 
 1. **完全退出 CS2**（游戏本体和后台都要退）。
-2. 双击 `一键重建CS2着色器缓存.bat`（一般无需管理员权限；若提示无法删除文件，则右键"以管理员身份运行"）。
+2. 双击 `Rebuild-CS2-Shader-Cache.bat`（一般无需管理员权限；若提示无法删除文件，则右键"以管理员身份运行"）。
 3. 按黑窗口里的提示操作即可，需要人工参与的只有 4 处：
-   - 打开工具后按一次回车开始；
+   - 开场按回车=从第 1 步跑全流程（也可以输入步骤编号只跑后面几步）；
    - 等 Steam 校验完文件后按一次回车；
    - 在 Steam 控制台按 Ctrl+V 粘贴 `shader_build 730`（工具已自动复制到剪贴板）后回车；
    - 途中的"是否"提示直接回车选"是"（未检测到显卡驱动缓存时，清理那项会自动跳过）。
 
+### 只想重跑后面几步
+
+等 Steam 校验、进游戏跑图都很耗时，中断后不必从头再来：在开场那个提示里直接输入步骤编号（1-5），就从那一步开始。例如校验已经做完了，输入 `3` 即从"清理着色器缓存"开始。
+
+前置检查和定位游戏目录每次都会先跑（不占编号，后面每一步都依赖它）；被跳过的步骤会印一行 `[!] 已跳过第 1-n 步 (视为已完成)`，不会静默略过。步骤之间的先后顺序工具不替你判断——比如没做步骤 1 就直接跑步骤 4 也是允许的。
+
 也可以用命令行运行（支持参数）：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Rebuild-CS2ShaderCache.ps1            # 正式执行
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Rebuild-CS2ShaderCache.ps1 -DryRun    # 演练模式，不实际改动
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Rebuild-CS2ShaderCache.ps1 -AppId 730 # 指定其他 Steam 游戏 AppId
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\Rebuild-CS2ShaderCache.ps1            # 正式执行
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\Rebuild-CS2ShaderCache.ps1 -DryRun    # 演练模式，不实际改动
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\Rebuild-CS2ShaderCache.ps1 -AppId 730 # 指定其他 Steam 游戏 AppId
 ```
 
 ## 工具自动化的内容（对应教程流程）
