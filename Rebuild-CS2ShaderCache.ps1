@@ -7,7 +7,7 @@
       1. 删除 CS2 game\core 目录下 shaders* 开头的文件
       2. Steam 校验 CS2 文件完整性 (被删除的文件会自动重新下载)
       3. 清理 Windows DirectX 着色器缓存 (等同"磁盘清理"中的 DirectX 着色器缓存项)
-      4. Steam 控制台执行 shader_build 730 预编译着色器
+      4. Steam 控制台执行 shader_build 730 预编译着色器 (命令自动复制到剪贴板)
       5. 启动 CS2, 离线跑图完成着色器重建
     仅支持 Windows + Steam 版 CS2。
 .PARAMETER AppId
@@ -33,10 +33,13 @@ Set-StrictMode -Version 3.0
 
 $script:DryRun  = [bool]$DryRun
 $script:FakeTest = $false
-$script:Version = '1.0'
+$script:Version = '1.1'
 $script:KnownGameDirName = 'Counter-Strike Global Offensive'
 $script:UIWidth = 66   # 界面总宽度 (显示列; 控制台里中文占 2 列)
 $script:Summary = New-Object System.Collections.Generic.List[string]
+$script:TotalFreed = 0L   # 全程累计释放的字节数 (用于摘要)
+$script:LastFreed = 0L    # 最近一次 Clear-CacheFolder 释放的字节数
+$script:Timer = [System.Diagnostics.Stopwatch]::StartNew()
 
 # ---------------- 定位 Steam / CS2 ----------------
 function Find-SteamRoot {
@@ -121,9 +124,8 @@ function Clear-CacheFolder {
         if (Test-Path -LiteralPath $item.FullName) { $failed++ }
     }
     $freed = $sizeBefore - (Get-DirSize $Path)
-    if ($freed -gt 0 -and -not $script:DryRun) {
-        Add-Summary ('清理缓存: {0} (释放 {1:N1} MB)' -f $Path, ($freed / 1MB))
-    }
+    $script:LastFreed = $freed
+    $script:TotalFreed += $freed
     if ($failed -gt 0) {
         Write-Ok ('清理 {0} : 释放 {1:N1} MB ; {2} 项被占用暂时跳过' -f $Path, ($freed / 1MB), $failed)
     } else {
@@ -135,6 +137,7 @@ function Clear-CacheFolder {
 # ================= 界面辅助 =================
 # 注意: 控制台中文字符占 2 列, 含中文的对齐必须按"显示宽度"计算,
 #       否则边框会错位; 制表符 (─ │ ╔ ╗ 等) 在常用控制台字体下按 1 列渲染。
+# 符号 √ × · → 均为 GBK 收录字符, 中文 Windows 控制台字体都能正常显示。
 
 function Get-DispWidth {
     # 计算字符串在控制台中的显示宽度 (CJK 全角字符按 2 列计)
@@ -173,42 +176,42 @@ function Write-Line {
 }
 
 function Write-Status {
-    # 带彩色标签的状态行: [完成] / [提示] / [错误] ...
+    # 带彩色符号标签的状态行: [√] / [i] / [!] / [×]
     param([string]$Tag, [ConsoleColor]$Color, [string]$Text)
     Write-Host ('    [' + $Tag + '] ') -ForegroundColor $Color -NoNewline
     Write-Host $Text
 }
 
-function Write-Ok   { param([string]$Text) Write-Status -Tag '完成' -Color 'Green'    -Text $Text }
-function Write-Info { param([string]$Text) Write-Status -Tag '提示' -Color 'DarkGray' -Text $Text }
-function Write-Err  { param([string]$Text) Write-Status -Tag '错误' -Color 'Red'     -Text $Text }
+function Write-Ok   { param([string]$Text) Write-Status -Tag '√' -Color 'Green'  -Text $Text }
+function Write-Info { param([string]$Text) Write-Status -Tag 'i' -Color 'Gray'   -Text $Text }
+function Write-Warn { param([string]$Text) Write-Status -Tag '!' -Color 'Yellow' -Text $Text }
+function Write-Err  { param([string]$Text) Write-Status -Tag '×' -Color 'Red'    -Text $Text }
 
 function Write-Phase {
-    # 分步标题: ── [n/5] 步骤名 ─────────
+    # 分步标题: ── [n/6] 步骤名 ─────────
     param([string]$Label)
     $dash = $script:UIWidth - 5 - (Get-DispWidth $Label) - 1
     if ($dash -lt 4) { $dash = 4 }
     Write-Host ''
-    Write-Host '  ── ' -ForegroundColor DarkCyan -NoNewline
+    Write-Host '  ── ' -ForegroundColor Cyan -NoNewline
     Write-Host $Label -ForegroundColor Yellow -NoNewline
-    Write-Host (' ' + ('─' * $dash)) -ForegroundColor DarkCyan
+    Write-Host (' ' + ('─' * $dash)) -ForegroundColor Cyan
 }
 
 function Write-Banner {
-    # 开场横幅 (双线框, 内容按显示宽度居中)
+    # 开场横幅 (双线框, 内容按显示宽度居中; 版本号放框下方小字)
     $w = $script:UIWidth - 4
     Write-Host ''
-    Write-Host ('  ╔' + ('═' * $w) + '╗') -ForegroundColor DarkCyan
-    Write-Host '  ║' -ForegroundColor DarkCyan -NoNewline
-    Write-Host (Format-PaddedText 'CS2 着色器缓存一键重建工具' $w -Center) -ForegroundColor Cyan -NoNewline
-    Write-Host '║' -ForegroundColor DarkCyan
-    Write-Host '  ║' -ForegroundColor DarkCyan -NoNewline
-    Write-Host (Format-PaddedText ('v' + $script:Version + '  |  一键重建着色器缓存, 修复更新后掉帧卡顿') $w -Center) -ForegroundColor DarkGray -NoNewline
-    Write-Host '║' -ForegroundColor DarkCyan
-    Write-Host '  ║' -ForegroundColor DarkCyan -NoNewline
-    Write-Host (Format-PaddedText '仅支持 Windows + Steam 版 CS2' $w -Center) -ForegroundColor DarkGray -NoNewline
-    Write-Host '║' -ForegroundColor DarkCyan
-    Write-Host ('  ╚' + ('═' * $w) + '╝') -ForegroundColor DarkCyan
+    Write-Host ('  ╔' + ('═' * $w) + '╗') -ForegroundColor Cyan
+    Write-Host '  ║' -ForegroundColor Cyan -NoNewline
+    Write-Host (Format-PaddedText 'CS2 着色器缓存一键重建工具' $w -Center) -ForegroundColor White -NoNewline
+    Write-Host '║' -ForegroundColor Cyan
+    Write-Host '  ║' -ForegroundColor Cyan -NoNewline
+    Write-Host (Format-PaddedText '重建着色器缓存, 修复更新后掉帧卡顿' $w -Center) -ForegroundColor Gray -NoNewline
+    Write-Host '║' -ForegroundColor Cyan
+    Write-Host ('  ╚' + ('═' * $w) + '╝') -ForegroundColor Cyan
+    $meta = 'v' + $script:Version + ' · 仅支持 Windows + Steam 版 CS2'
+    Write-Host ('  ' + (Format-PaddedText $meta $w -Center)) -ForegroundColor DarkGray
     Write-Host ''
     Write-Line '流程依据: 小黑盒教程《CS更新后掉帧严重？一张图片解决你的问题！》' DarkGray
     Write-Line '(作者: 忧郁美男子)' DarkGray
@@ -228,24 +231,31 @@ function Write-Callout {
     Write-Host ('  └' + ('─' * ($inner + 2)) + '┘') -ForegroundColor $Color
 }
 
+function Read-Input {
+    # 亮色提示符 + 读取一行输入
+    param([string]$Message)
+    Write-Host ('    → ' + $Message) -ForegroundColor Cyan -NoNewline
+    return (Read-Host '')
+}
+
 function Wait-Enter {
     # 等待用户按回车; 演练模式下自动继续
     param([string]$Message)
     if ($script:DryRun) { Write-Info ('(演练) 自动继续: ' + $Message); return }
-    Read-Host ('    → ' + $Message) | Out-Null
+    Read-Input ($Message + ' ') | Out-Null
 }
 
 function Confirm-YesNo {
     # 询问是/否, 回车默认为是; 演练模式下自动选是
     param([string]$Message)
     if ($script:DryRun) { Write-Info '(演练) 自动选择: 是'; return $true }
-    $a = Read-Host ('    → ' + $Message + ' [回车=是, n=否]')
+    $a = Read-Input ($Message + ' [回车=是, n=否] ')
     return ($a -eq '' -or $a -match '^(y|yes|是)$')
 }
 
 function Wait-Exit {
     # 出错时提示并退出 (退出码 1)
-    if (-not $script:DryRun) { Read-Host '    → 按回车键退出' | Out-Null }
+    if (-not $script:DryRun) { Read-Input '按回车键退出 ' | Out-Null }
     exit 1
 }
 
@@ -257,20 +267,21 @@ try { $Host.UI.RawUI.WindowTitle = ('CS2 着色器缓存一键重建工具 v' + 
 }
 
 Write-Banner
-if ($script:DryRun) { Write-Line '当前为演练模式 (-DryRun), 不会执行任何实际改动' Yellow }
+if ($script:DryRun) { Write-Warn '当前为演练模式 (-DryRun), 不会执行任何实际改动' }
 
 Write-Line '执行流程 (基本全自动, 只需按提示做少数几步操作):' White
 $flow = @(
-    '移出 CS2 核心目录下 shaders* 开头的文件 (先备份, 不直接删)',
+    '定位 CS2 安装目录',
+    '移出 core 目录下 shaders* 开头的文件 (先备份, 不直接删)',
     '拉起 Steam 校验文件完整性, 被移出的文件自动重新下载',
-    '清理系统 DirectX 着色器缓存 (可选: 顺带清理显卡驱动缓存)',
-    '打开 Steam 控制台, 提示你输入 shader_build 预编译命令',
+    '清理 DirectX 着色器缓存 (可选: 顺带清理显卡驱动缓存)',
+    '打开 Steam 控制台, shader_build 命令自动复制到剪贴板',
     '启动 CS2, 提醒你离线跑图, 让着色器在游戏内重新编译'
 )
 for ($i = 0; $i -lt $flow.Count; $i++) {
     $mark = '├─ '
     if ($i -eq $flow.Count - 1) { $mark = '└─ ' }
-    Write-Line ($mark + ($i + 1) + '. ' + $flow[$i]) DarkGray
+    Write-Line ($mark + ($i + 1) + '. ' + $flow[$i]) Gray
 }
 
 Write-Host ''
@@ -290,7 +301,7 @@ if (Get-Process -Name steam -ErrorAction SilentlyContinue) {
 }
 
 # ---------- 步骤 1: 定位 CS2 ----------
-Write-Phase '[1/5] 定位 CS2 安装目录'
+Write-Phase '[1/6] 定位 CS2 安装目录'
 $gameDir = Find-GameDir
 if (-not $gameDir -and $script:DryRun) {
     # 演练模式下若本机没装 CS2, 用临时目录模拟, 以便完整演示流程
@@ -304,7 +315,7 @@ if (-not $gameDir -and $script:DryRun) {
 }
 if (-not $gameDir) {
     Write-Err ('未能自动定位 CS2 (Steam AppId=' + $AppId + ') 的安装目录。')
-    $manual = Read-Host '    → 请输入 CS2 安装目录路径 (可把文件夹直接拖进本窗口)'
+    $manual = Read-Input '请输入 CS2 安装目录路径 (可把文件夹直接拖进本窗口): '
     $manual = $manual.Trim().Trim('"')
     if ($manual -and (Test-Path -LiteralPath (Join-Path $manual 'game\core'))) {
         $gameDir = $manual
@@ -321,7 +332,7 @@ if (-not (Test-Path -LiteralPath $coreDir)) {
 Write-Ok ('CS2 目录: ' + $gameDir)
 
 # ---------- 步骤 2: 移出 core 下 shaders* 文件 ----------
-Write-Phase '[2/5] 移出 game\core 下 shaders* 开头的文件'
+Write-Phase '[2/6] 移出 game\core 下 shaders* 开头的文件'
 $shaderFiles = @(Get-ChildItem -LiteralPath $coreDir -Filter 'shaders*' -File -ErrorAction SilentlyContinue)
 if ($shaderFiles.Count -eq 0) {
     Write-Info '未发现 shaders* 文件 (可能此前已删除, 等待校验时重新下载即可)。'
@@ -336,7 +347,7 @@ if ($shaderFiles.Count -eq 0) {
     }
     $nameW += 2
     foreach ($f in $shaderFiles) {
-        Write-Line ('  - ' + (Format-PaddedText $f.Name $nameW) + ('{0,8:N1} MB' -f ($f.Length / 1MB))) DarkGray
+        Write-Line ('  - ' + (Format-PaddedText $f.Name $nameW) + ('{0,8:N1} MB' -f ($f.Length / 1MB))) Gray
     }
     if ($script:FakeTest) {
         # 演练且目录为临时模拟: 实际执行移动以自测逻辑
@@ -375,7 +386,7 @@ if ($shaderFiles.Count -eq 0) {
 }
 
 # ---------- 步骤 3: Steam 校验完整性 ----------
-Write-Phase '[3/5] Steam 校验 CS2 文件完整性'
+Write-Phase '[3/6] Steam 校验 CS2 文件完整性'
 if ($script:DryRun) {
     Write-Info ('(演练) 将打开 steam://validate/' + $AppId)
 } else {
@@ -386,8 +397,8 @@ if ($script:DryRun) {
     Add-Summary '已请求 Steam 校验 CS2 文件完整性'
 }
 
-# ---------- 步骤 4: 清理 DirectX 着色器缓存 ----------
-Write-Phase '[4/5] 清理 Windows DirectX 着色器缓存'
+# ---------- 步骤 4: 清理着色器缓存 ----------
+Write-Phase '[4/6] 清理着色器缓存'
 $dxCache = Join-Path $env:LOCALAPPDATA 'Microsoft\DirectX Shader Cache'
 if ($script:DryRun) {
     if (Test-Path -LiteralPath $dxCache) {
@@ -396,47 +407,76 @@ if ($script:DryRun) {
         Write-Info '(演练) 未找到 DirectX Shader Cache 目录 (该项无需清理)'
     }
 } else {
-    if (-not (Clear-CacheFolder $dxCache)) {
+    if (Clear-CacheFolder $dxCache) {
+        Add-Summary ('清理 DirectX 着色器缓存, 释放 {0:N1} MB' -f ($script:LastFreed / 1MB))
+    } else {
         Write-Info '未找到 DirectX Shader Cache 目录 (该项无需清理)。'
     }
 }
 
-if (Confirm-YesNo '是否同时清理显卡驱动的着色器缓存 (NVIDIA/AMD/Intel) ? 更彻底') {
-    $vendorCaches = @(
-        (Join-Path $env:LOCALAPPDATA 'NVIDIA\DXCache'),
-        (Join-Path $env:LOCALAPPDATA 'NVIDIA\GLCache'),
-        (Join-Path $env:LOCALAPPDATA 'NVIDIA Corporation\NV_Cache'),
-        (Join-Path $env:LOCALAPPDATA 'AMD\DxCache'),
-        (Join-Path $env:LOCALAPPDATA 'AMD\DxcCache'),
-        (Join-Path $env:LOCALAPPDATA 'Intel\ShaderCache')
-    )
-    foreach ($vc in $vendorCaches) {
+$vendorCaches = @(
+    (Join-Path $env:LOCALAPPDATA 'NVIDIA\DXCache'),
+    (Join-Path $env:LOCALAPPDATA 'NVIDIA\GLCache'),
+    (Join-Path $env:LOCALAPPDATA 'NVIDIA Corporation\NV_Cache'),
+    (Join-Path $env:LOCALAPPDATA 'AMD\DxCache'),
+    (Join-Path $env:LOCALAPPDATA 'AMD\DxcCache'),
+    (Join-Path $env:LOCALAPPDATA 'Intel\ShaderCache')
+)
+$foundCaches = @()
+foreach ($vc in $vendorCaches) {
+    if (Test-Path -LiteralPath $vc) { $foundCaches += $vc }
+}
+if ($foundCaches.Count -eq 0) {
+    Write-Info '未检测到显卡驱动 (NVIDIA/AMD/Intel) 着色器缓存, 该项自动跳过。'
+} else {
+    Write-Line ('检测到 {0} 个显卡驱动着色器缓存:' -f $foundCaches.Count) White
+    foreach ($vc in $foundCaches) {
+        $short = $vc.Substring($env:LOCALAPPDATA.Length + 1)
+        Write-Line ('  - ' + (Format-PaddedText $short 30) + ('{0,8:N1} MB' -f ((Get-DirSize $vc) / 1MB))) Gray
+    }
+    if (Confirm-YesNo '是否一并清理? 更彻底, 但其他游戏首次启动时会重新编译着色器') {
         if ($script:DryRun) {
-            if (Test-Path -LiteralPath $vc) { Write-Info ('(演练) 将清理: ' + $vc) }
+            foreach ($vc in $foundCaches) { Write-Info ('(演练) 将清理: ' + $vc) }
         } else {
-            Clear-CacheFolder $vc | Out-Null
+            $freedBefore = $script:TotalFreed
+            foreach ($vc in $foundCaches) { Clear-CacheFolder $vc | Out-Null }
+            Add-Summary ('清理显卡驱动着色器缓存, 释放 {0:N1} MB' -f (($script:TotalFreed - $freedBefore) / 1MB))
         }
     }
-    Write-Info '提示: 其他游戏的着色器缓存也被一并清理, 首次游玩时会重新编译, 属正常现象。'
 }
 
 # ---------- 步骤 5: Steam 控制台预编译 ----------
-Write-Phase '[5/5] Steam 控制台预编译着色器'
+Write-Phase '[5/6] Steam 控制台预编译着色器'
+$buildCmd = 'shader_build ' + $AppId
 if ($script:DryRun) {
-    Write-Info ('(演练) 将打开 steam://open/console, 并提示输入 shader_build ' + $AppId)
+    Write-Info ('(演练) 将打开 steam://open/console, 并把命令复制到剪贴板: ' + $buildCmd)
 } else {
     Start-Process 'steam://open/console'
     Write-Ok '已打开 Steam 控制台。'
     Add-Summary '已打开 Steam 控制台'
-    Write-Callout -Lines @(
-        ('请在 Steam 控制台底部输入框输入:  shader_build ' + $AppId),
-        '输入后按回车执行, Steam 会自动为 CS2 预编译着色器'
-    ) -Color Yellow
+    $copied = $false
+    try {
+        Set-Clipboard -Value $buildCmd
+        $copied = $true
+    } catch {
+        Write-Verbose ('无法访问剪贴板: ' + $_.Exception.Message)
+    }
+    if ($copied) {
+        Write-Callout -Lines @(
+            ('命令已复制到剪贴板:  ' + $buildCmd),
+            '在 Steam 控制台底部输入框按 Ctrl+V 粘贴, 回车执行'
+        ) -Color Yellow
+    } else {
+        Write-Callout -Lines @(
+            ('请在 Steam 控制台底部输入框输入:  ' + $buildCmd),
+            '输入后按回车执行, Steam 会自动为 CS2 预编译着色器'
+        ) -Color Yellow
+    }
     Wait-Enter '执行完成后回到本窗口, 按回车继续'
 }
 
-# ---------- 收尾: 启动游戏跑图 ----------
-Write-Phase '收尾: 启动游戏完成重建'
+# ---------- 步骤 6: 启动游戏跑图 ----------
+Write-Phase '[6/6] 启动 CS2, 游戏内重建着色器'
 Write-Callout -Lines @(
     '重要: 着色器必须在游戏内重新编译才会生效!',
     '启动 CS2 后请先打 1-2 局离线 (人机/跑图), 把常用地图跑一遍,',
@@ -459,9 +499,22 @@ if ($script:Summary.Count -gt 0) {
 } else {
     Write-Info '(本次无实际改动)'
 }
+if (-not $script:DryRun) {
+    $t = $script:Timer.Elapsed
+    if ($t.TotalMinutes -ge 1) {
+        $timeText = ('{0} 分 {1} 秒' -f [int]$t.TotalMinutes, $t.Seconds)
+    } else {
+        $timeText = ('{0} 秒' -f [int][math]::Round($t.TotalSeconds))
+    }
+    $foot = '总耗时 ' + $timeText
+    if ($script:TotalFreed -gt 0) { $foot = ('累计释放 {0:N1} MB  ·  ' -f ($script:TotalFreed / 1MB)) + $foot }
+    Write-Host ''
+    Write-Host ('  ' + $foot) -ForegroundColor Cyan
+}
 
-Write-Phase '全部完成'
+Write-Callout -Lines @('√ 全部完成, 祝游戏愉快! 记得先进游戏离线跑图。') -Color Green
+Write-Host ''
 Write-Info '如果完成后帧数反而下降, 教程建议: 重新安装游戏。'
 Write-Info '每个人的配置不同, 本流程不一定对所有机器都有效。'
-if (-not $script:DryRun) { Read-Host '    → 按回车键退出' | Out-Null }
+if (-not $script:DryRun) { Read-Input '按回车键退出 ' | Out-Null }
 exit 0

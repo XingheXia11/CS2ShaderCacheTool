@@ -18,8 +18,8 @@
 3. 按黑窗口里的提示操作即可，需要人工参与的只有 4 处：
    - 打开工具后按一次回车开始；
    - 等 Steam 校验完文件后按一次回车；
-   - 在 Steam 控制台输入 `shader_build 730` 后按一次回车；
-   - 两个"是否"提示直接回车选"是"。
+   - 在 Steam 控制台按 Ctrl+V 粘贴 `shader_build 730`（工具已自动复制到剪贴板）后回车；
+   - 途中的"是否"提示直接回车选"是"（未检测到显卡驱动缓存时，清理那项会自动跳过）。
 
 也可以用命令行运行（支持参数）：
 
@@ -37,7 +37,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Rebuild-CS2ShaderCache.ps1
 | 删除 shaders 开头的文件 | 自动列出并移出所有 `shaders*` 文件（先移到备份目录，不是直接永久删除） |
 | 属性 → 验证文件完整性 | 自动打开 `steam://validate/730`，被删文件会自动重新下载 |
 | 开始菜单磁盘清理 → 删除 C 盘 DirectX 着色器缓存 | 直接清理 `%LOCALAPPDATA%\Microsoft\DirectX Shader Cache`（即磁盘清理里那一项），可选同时清理 NVIDIA/AMD/Intel 驱动着色器缓存 |
-| Win+R → `steam://open/console` → 控制台输入 `shader_build 730` | 自动打开 Steam 控制台并提示输入命令（该命令需人工输入，Steam 界面无法安全自动化） |
+| Win+R → `steam://open/console` → 控制台输入 `shader_build 730` | 自动打开 Steam 控制台，并把 `shader_build 730` 复制到剪贴板，Ctrl+V 粘贴即可（粘贴执行那一下需人工，Steam 界面无法安全自动化） |
 | 打开单机模式跑图 | 自动请求启动 CS2，并提醒先跑 1-2 局离线人机让着色器重新编译 |
 
 ## 注意事项
@@ -47,4 +47,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Rebuild-CS2ShaderCache.ps1
 - **如果更卡了**：教程原话——帧数非但没有提升反而下降，重下游戏即可。
 - 清理 DirectX / 显卡着色器缓存会影响**所有游戏**：其他游戏首次启动时也会重新编译着色器，属正常现象。
 - 备份位置：`%LOCALAPPDATA%\CS2ShaderCacheTool\backup_时间戳`。校验完整性完成后这些备份就没用了，可手动删除。
-- Steam 控制台那条命令是 Steam 客户端内置命令，必须在 Steam 窗口里手动输入，工具无法替代。
+- Steam 控制台那条命令是 Steam 客户端内置命令，必须在 Steam 窗口里执行；工具会自动把它复制到剪贴板，粘贴回车即可。
